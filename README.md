@@ -287,7 +287,7 @@ terms or conditions.
 
 ```kotlin
 dependencies {
-    implementation("io.github.kotlinmania:tokio-test-kotlin:0.1.0-SNAPSHOT")
+    implementation("io.github.kotlinmania:tokio-test-kotlin:0.1.0")
 }
 ```
 
