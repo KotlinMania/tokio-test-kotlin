@@ -1,5 +1,5 @@
 version = 1
-name = "proc-macro-kotlin"
+name = "tokio-test-kotlin"
 
 [setup]
 script = '''
