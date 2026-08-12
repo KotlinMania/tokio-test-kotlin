@@ -9,7 +9,10 @@ import kotlin.time.TimeMark
  * A collection of useful assertions for testing futures and Tokio-based code.
  */
 public sealed class Poll<out T> {
-    public data class Ready<T>(val value: T) : Poll<T>()
+    public data class Ready<T>(
+        val value: T,
+    ) : Poll<T>()
+
     public data object Pending : Poll<Nothing>()
 }
 
