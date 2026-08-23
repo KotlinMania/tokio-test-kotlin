@@ -293,9 +293,7 @@ kotlin {
     mingwX64()
 
     // Android NDK — always built (full target surface, no opt-in gate).
-    androidNativeArm32()
     androidNativeArm64()
-    androidNativeX86()
     androidNativeX64()
 
     // Web
@@ -626,10 +624,8 @@ tasks.register("swiftExportSmokeTest") {
 // ============================================================================
 val nativeTargetNames =
     listOf(
-        "androidNativeArm32",
         "androidNativeArm64",
         "androidNativeX64",
-        "androidNativeX86",
         "iosArm64",
         "iosSimulatorArm64",
         "iosX64",
