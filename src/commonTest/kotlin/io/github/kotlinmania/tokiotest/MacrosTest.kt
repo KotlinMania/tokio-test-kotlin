@@ -1,3 +1,4 @@
+// port-lint: tests macros.rs
 package io.github.kotlinmania.tokiotest
 
 import kotlin.test.Test
@@ -5,16 +6,88 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class MacrosTest {
+    private fun ready(): Poll<Unit> = Poll.Ready(Unit)
+
+    private fun readyOk(): Poll<Result<Unit>> = Poll.Ready(Result.success(Unit))
+
+    private fun readyErr(): Poll<Result<Unit>> = Poll.Ready(Result.failure(IllegalStateException("test error")))
+
+    private fun pending(): Poll<Unit> = Poll.Pending
+
     @Test
-    fun assertReadyReturnsReadyValue() {
-        assertEquals(42, assertReady(Poll.Ready(42)))
-        assertFailsWith<AssertionError> { assertReady(Poll.Pending) }
+    fun assertReady() {
+        val poll = ready()
+        assertReady(poll)
+        assertReady(poll, "some message")
+        assertReady(poll, "Unit")
     }
 
     @Test
-    fun assertPendingRejectsReadyValue() {
-        assertPending(Poll.Pending)
-        assertFailsWith<AssertionError> { assertPending(Poll.Ready("done")) }
+    fun assertReadyOnPending() {
+        val poll = pending()
+        assertFailsWith<AssertionError> {
+            assertReady(poll)
+        }
+    }
+
+    @Test
+    fun assertPending() {
+        val poll = pending()
+        assertPending(poll)
+        assertPending(poll, "some message")
+    }
+
+    @Test
+    fun assertPendingOnReady() {
+        val poll = ready()
+        assertFailsWith<AssertionError> {
+            assertPending(poll)
+        }
+    }
+
+    @Test
+    fun assertReadyOk() {
+        val poll = readyOk()
+        assertReadyOk(poll)
+        assertReadyOk(poll, "some message")
+    }
+
+    @Test
+    fun assertOkOnErr() {
+        val poll = readyErr()
+        assertFailsWith<AssertionError> {
+            assertReadyOk(poll)
+        }
+    }
+
+    @Test
+    fun assertReadyErr() {
+        val poll = readyErr()
+        assertReadyErr(poll)
+        assertReadyErr(poll, "some message")
+    }
+
+    @Test
+    fun assertErrOnOk() {
+        val poll = readyOk()
+        assertFailsWith<AssertionError> {
+            assertReadyErr(poll)
+        }
+    }
+
+    @Test
+    fun assertReadyEq() {
+        val poll = ready()
+        assertReadyEq(poll, Unit)
+        assertReadyEq(poll, Unit, "some message")
+    }
+
+    @Test
+    fun assertEqOnNotEq() {
+        val poll = Poll.Ready(42)
+        assertFailsWith<AssertionError> {
+            assertReadyEq(poll, 99)
+        }
     }
 
     @Test
@@ -24,11 +97,5 @@ class MacrosTest {
         assertEquals(error, assertErr(Result.failure<String>(error)))
         assertEquals("ok", assertReadyOk(Poll.Ready(Result.success("ok"))))
         assertEquals(error, assertReadyErr(Poll.Ready(Result.failure<String>(error))))
-    }
-
-    @Test
-    fun assertReadyEqReturnsTheReadyValue() {
-        assertEquals("same", assertReadyEq(Poll.Ready("same"), "same"))
-        assertFailsWith<AssertionError> { assertReadyEq(Poll.Ready("actual"), "expected") }
     }
 }
