@@ -1,21 +1,16 @@
-#if canImport(Testing)
 import Testing
 import TokioTest
 
-@Suite("TokioTest Swift Export Smoke Test")
+@Suite("TokioTest Swift Export Suite")
 struct TokioTestExportTests {
-    @Test("Swift module loads")
-    func swiftModuleLoads() throws {
-        #expect(true)
+    @Test("Swift module loads cleanly")
+    func swiftModuleLoads() {
+        #expect(Bool(true), "TokioTest swift module imported cleanly")
     }
-}
-#elseif canImport(XCTest)
-import XCTest
-import TokioTest
 
-final class TokioTestExportTests: XCTestCase {
-    func testSwiftModuleLoads() throws {
-        XCTAssertTrue(true, "TokioTest swift module imported cleanly")
+    @Test("TokioTestLib module info is accessible")
+    func moduleInfo() {
+        #expect(TokioTestLib.shared.CRATE_NAME == "tokiotest")
+        #expect(TokioTestLib.shared.MODULE_NAME == "tokiotest")
     }
 }
-#endif
