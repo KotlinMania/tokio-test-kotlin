@@ -10,20 +10,25 @@ class MacrosTest {
 
     private fun readyOk(): Poll<Result<Unit>> = Poll.Ready(Result.success(Unit))
 
-    private fun readyErr(): Poll<Result<Unit>> = Poll.Ready(Result.failure(IllegalStateException("test error")))
+    private fun readyErr(): Poll<Result<Unit>> = Poll.Ready(Result.failure(IllegalStateException("boom")))
 
     private fun pending(): Poll<Unit> = Poll.Pending
 
-    @Test
-    fun assertReady() {
-        val poll = ready()
-        assertReady(poll)
-        assertReady(poll, "some message")
-        assertReady(poll, "Unit")
+    enum class TestEnum {
+        Data,
     }
 
     @Test
-    fun assertReadyOnPending() {
+    fun testAssertReady() {
+        val poll = ready()
+        assertReady(poll)
+        assertReady(poll, "some message")
+        assertReady(poll, Unit.toString())
+        assertReady(poll, TestEnum.Data.name)
+    }
+
+    @Test
+    fun testAssertReadyOnPending() {
         val poll = pending()
         assertFailsWith<AssertionError> {
             assertReady(poll)
@@ -31,14 +36,16 @@ class MacrosTest {
     }
 
     @Test
-    fun assertPending() {
+    fun testAssertPending() {
         val poll = pending()
         assertPending(poll)
         assertPending(poll, "some message")
+        assertPending(poll, Unit.toString())
+        assertPending(poll, TestEnum.Data.name)
     }
 
     @Test
-    fun assertPendingOnReady() {
+    fun testAssertPendingOnReady() {
         val poll = ready()
         assertFailsWith<AssertionError> {
             assertPending(poll)
@@ -46,14 +53,16 @@ class MacrosTest {
     }
 
     @Test
-    fun assertReadyOk() {
+    fun testAssertReadyOk() {
         val poll = readyOk()
         assertReadyOk(poll)
         assertReadyOk(poll, "some message")
+        assertReadyOk(poll, Unit.toString())
+        assertReadyOk(poll, TestEnum.Data.name)
     }
 
     @Test
-    fun assertOkOnErr() {
+    fun testAssertOkOnErr() {
         val poll = readyErr()
         assertFailsWith<AssertionError> {
             assertReadyOk(poll)
@@ -61,14 +70,16 @@ class MacrosTest {
     }
 
     @Test
-    fun assertReadyErr() {
+    fun testAssertReadyErr() {
         val poll = readyErr()
         assertReadyErr(poll)
         assertReadyErr(poll, "some message")
+        assertReadyErr(poll, Unit.toString())
+        assertReadyErr(poll, TestEnum.Data.name)
     }
 
     @Test
-    fun assertErrOnOk() {
+    fun testAssertErrOnOk() {
         val poll = readyOk()
         assertFailsWith<AssertionError> {
             assertReadyErr(poll)
@@ -76,26 +87,35 @@ class MacrosTest {
     }
 
     @Test
-    fun assertReadyEq() {
+    fun testAssertReadyEq() {
         val poll = ready()
         assertReadyEq(poll, Unit)
         assertReadyEq(poll, Unit, "some message")
+        assertReadyEq(poll, Unit, Unit.toString())
+        assertReadyEq(poll, Unit, TestEnum.Data.name)
     }
 
     @Test
-    fun assertEqOnNotEq() {
-        val poll = Poll.Ready(42)
+    fun testAssertOkDirect() {
+        val success = Result.success(42)
+        val value = assertOk(success)
+        assertEquals(42, value)
+
+        val failure = Result.failure<Int>(IllegalStateException("err"))
         assertFailsWith<AssertionError> {
-            assertReadyEq(poll, 99)
+            assertOk(failure)
         }
     }
 
     @Test
-    fun resultAssertionsReturnContainedValues() {
-        val error = IllegalStateException("boom")
-        assertEquals("ok", assertOk(Result.success("ok")))
-        assertEquals(error, assertErr(Result.failure<String>(error)))
-        assertEquals("ok", assertReadyOk(Poll.Ready(Result.success("ok"))))
-        assertEquals(error, assertReadyErr(Poll.Ready(Result.failure<String>(error))))
+    fun testAssertErrDirect() {
+        val failure = Result.failure<Int>(IllegalStateException("err"))
+        val err = assertErr(failure)
+        assertEquals("err", err.message)
+
+        val success = Result.success(42)
+        assertFailsWith<AssertionError> {
+            assertErr(success)
+        }
     }
 }

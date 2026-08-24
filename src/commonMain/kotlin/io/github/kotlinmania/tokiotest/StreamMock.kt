@@ -1,14 +1,24 @@
 // port-lint: source stream_mock.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.tokiotest
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
+import kotlin.native.HiddenFromObjC
 import kotlin.time.Duration
 
-internal sealed class StreamAction<out T> {
-    data class Next<T>(
+/**
+ * An action in a [StreamMock] script.
+ */
+@HiddenFromObjC
+public sealed class StreamAction<out T> {
+    public data class Next<out T>(
         val value: T,
     ) : StreamAction<T>()
 
-    data class Wait(
+    public data class Wait(
         val duration: Duration,
     ) : StreamAction<Nothing>()
 }
@@ -16,65 +26,76 @@ internal sealed class StreamAction<out T> {
 /**
  * A builder for [StreamMock].
  */
+@HiddenFromObjC
 public class StreamMockBuilder<T> {
     private val actions: ArrayDeque<StreamAction<T>> = ArrayDeque()
 
+    public companion object {
+        public fun <T> new(): StreamMockBuilder<T> = StreamMockBuilder()
+    }
+
+    /**
+     * Queue an item to be returned by the stream.
+     */
     public fun next(value: T): StreamMockBuilder<T> {
         actions.addLast(StreamAction.Next(value))
         return this
     }
 
+    /**
+     * Queue the stream to wait for a duration.
+     */
     public fun wait(duration: Duration): StreamMockBuilder<T> {
         actions.addLast(StreamAction.Wait(duration))
         return this
     }
 
+    /**
+     * Build the [StreamMock].
+     */
     public fun build(): StreamMock<T> = StreamMock(ArrayDeque(actions))
-
-    public companion object {
-        public fun <T> new(): StreamMockBuilder<T> = StreamMockBuilder()
-    }
 }
 
 /**
- * A mock stream implementing stream polling behavior.
+ * A mock stream implementing asynchronous sequential access to mocked items and delays.
  */
+@HiddenFromObjC
 public class StreamMock<T> internal constructor(
     private val actions: ArrayDeque<StreamAction<T>>,
-) : AutoCloseable {
-    private var waiting: Boolean = false
-
-    private fun nextAction(): StreamAction<T>? =
-        if (actions.isEmpty()) null else actions.removeFirst()
+) : Flow<T>,
+    AutoCloseable {
+    private var isClosed = false
 
     /**
-     * Polls the next item from the stream.
+     * Retrieves the next item in the stream, or `null` if exhausted.
      */
-    public fun pollNext(): Poll<T?> {
-        if (waiting) {
-            waiting = false
-        }
-        val action = nextAction() ?: return Poll.Ready(null)
-        return when (action) {
-            is StreamAction.Next -> Poll.Ready(action.value)
-            is StreamAction.Wait -> {
-                waiting = true
-                Poll.Pending
+    public suspend fun next(): T? {
+        while (actions.isNotEmpty()) {
+            when (val action = actions.removeFirst()) {
+                is StreamAction.Wait -> {
+                    delay(action.duration)
+                }
+                is StreamAction.Next -> {
+                    return action.value
+                }
             }
         }
+        return null
     }
 
-    /**
-     * Checks if all actions were consumed before dropping/closing.
-     */
-    public fun verifyAllConsumed() {
-        val undroppedCount = actions.count { it is StreamAction.Next }
-        check(undroppedCount == 0) {
-            "StreamMock was dropped before all actions were consumed, $undroppedCount actions were not consumed"
+    override suspend fun collect(collector: FlowCollector<T>) {
+        while (true) {
+            val item = next() ?: break
+            collector.emit(item)
         }
     }
 
     override fun close() {
-        verifyAllConsumed()
+        if (!isClosed) {
+            isClosed = true
+            if (actions.isNotEmpty()) {
+                throw IllegalStateException("StreamMock was dropped before all actions were consumed")
+            }
+        }
     }
 }

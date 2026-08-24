@@ -1,81 +1,72 @@
 // port-lint: source task.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.tokiotest
 
-/**
- * Spawn a task into a [Spawn] which wraps it in a mocked executor harness.
- */
-public fun <T> spawn(task: T): Spawn<T> = Spawn(MockTask(), task)
+import kotlin.native.HiddenFromObjC
 
 /**
- * Future or stream spawned on a mock task.
+ * Spawns a task or computation into a [Spawn] harness.
  */
-public class Spawn<T> internal constructor(
-    private val task: MockTask,
+@HiddenFromObjC
+public fun <T> spawn(task: T): Spawn<T> = Spawn(task)
+
+/**
+ * Mock task harness that wraps a task or computation.
+ */
+@HiddenFromObjC
+public class Spawn<T>(
     private val inner: T,
 ) {
+    private val mockTask: MockTask = MockTask()
+
     /**
-     * Consumes self returning the inner value.
+     * Consumes or unwraps the inner value.
      */
     public fun intoInner(): T = inner
 
     /**
-     * Returns true if the inner future has received a wake notification since the last call to enter.
+     * Returns true if the task has received a wake notification since the last call to [enter].
      */
-    public fun isWoken(): Boolean = task.isWoken()
+    public fun isWoken(): Boolean = mockTask.isWoken()
 
     /**
-     * Returns the number of references to the task waker.
+     * Returns the reference count of the waker.
      */
-    public fun wakerRefCount(): Int = task.wakerRefCount()
+    public fun wakerRefCount(): Int = mockTask.wakerRefCount()
 
     /**
-     * Enter the task context.
+     * Enters the task context.
      */
-    public fun <R> enter(block: (MockTask) -> R): R = task.enter(block)
-
-    /**
-     * Polls the future using the provided poll function under the task context.
-     */
-    public fun <R> poll(pollFn: (T) -> Poll<R>): Poll<R> =
-        task.enter { pollFn(inner) }
+    public fun <R> enter(block: (MockTask) -> R): R = mockTask.enter { block(mockTask) }
 }
 
 /**
- * Mock task execution context tracking wake notifications.
+ * Tracks mock task state and wake notifications.
  */
-public class MockTask internal constructor() {
+@HiddenFromObjC
+public class MockTask {
     private var woken: Boolean = false
     private var refCount: Int = 1
 
-    /**
-     * Clears any previously received wakes.
-     */
-    public fun clear() {
-        woken = false
+    public companion object {
+        public fun new(): MockTask = MockTask()
     }
 
-    /**
-     * Returns true if the task has received a wake notification since the last call to enter.
-     */
     public fun isWoken(): Boolean = woken
 
-    /**
-     * Returns the waker reference count.
-     */
-    public fun wakerRefCount(): Int = refCount
-
-    /**
-     * Triggers a wake notification.
-     */
     public fun wake() {
         woken = true
     }
 
-    /**
-     * Runs a block from the context of the task.
-     */
-    public fun <R> enter(block: (MockTask) -> R): R {
+    public fun clear() {
+        woken = false
+    }
+
+    public fun wakerRefCount(): Int = refCount
+
+    public fun <R> enter(block: () -> R): R {
         clear()
-        return block(this)
+        return block()
     }
 }

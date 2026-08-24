@@ -2,6 +2,11 @@
 package io.github.kotlinmania.tokiotest
 
 /**
+ * Runs the provided suspending block, blocking until it completes.
+ */
+public expect fun <T> blockOn(block: suspend () -> T): T
+
+/**
  * Module descriptor for the tokiotest crate.
  */
 public object TokioTestLib {
