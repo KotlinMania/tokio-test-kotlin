@@ -3,12 +3,12 @@
 
 package io.github.kotlinmania.tokiotest
 
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.coroutines.test.runTest
 
 class IoTest {
     @Test

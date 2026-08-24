@@ -7,7 +7,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TaskTest {
-    class SizedMock(val size: Pair<Int, Int?>)
+    class SizedMock(
+        val size: Pair<Int, Int?>,
+    )
 
     @Test
     fun testSpawnSizeHint() {
