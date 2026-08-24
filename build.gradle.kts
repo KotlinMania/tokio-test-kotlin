@@ -45,6 +45,24 @@ val commonMainDependencyBundle =
         .findBundle(commonMainBundleName)
         .orElseThrow { GradleException("Missing libs bundle '$commonMainBundleName'") }
 
+val intellijCoroutinesVersion =
+    providers.gradleProperty("versions.intellij.coroutines").getOrElse("1.10.2-intellij-1")
+
+// KGP runs Swift Export in an isolated worker whose classpath is
+// `swiftExportClasspath`. Adding a dependency disables KGP's default
+// dependency population, so keep the default embeddable runner explicit too.
+val projectDependencyHandler = project.dependencies
+configurations.configureEach {
+    if (name == "swiftExportClasspath") {
+        dependencies.add(projectDependencyHandler.create("org.jetbrains.kotlin:swift-export-embeddable:$kotlinVersion"))
+        dependencies.add(
+            projectDependencyHandler.create(
+                "org.jetbrains.intellij.deps.kotlinx:kotlinx-coroutines-core-jvm:$intellijCoroutinesVersion",
+            ),
+        )
+    }
+}
+
 // Opt-ins shared across Kotlin targets.
 val commonOptIns =
     listOf(
@@ -212,14 +230,15 @@ fun installProjectAndroidSdk(execOperations: ExecOperations) {
 
 writeAndroidLocalProperties()
 
-val ensureAndroidSdk by tasks.registering {
-    group = "setup"
-    description = "Ensures the project-local Android SDK is installed (idempotent)."
-    onlyIf("Android SDK already installed at $projectAndroidSdkDir") { !isProjectAndroidSdkInstalled() }
-    doLast {
-        installProjectAndroidSdk(serviceOf())
+val ensureAndroidSdk =
+    tasks.register("ensureAndroidSdk") {
+        group = "setup"
+        description = "Ensures the project-local Android SDK is installed (idempotent)."
+        onlyIf("Android SDK already installed at $projectAndroidSdkDir") { !isProjectAndroidSdkInstalled() }
+        doLast {
+            installProjectAndroidSdk(serviceOf())
+        }
     }
-}
 
 tasks.matching { it.name == "compileAndroidMain" }.configureEach {
     dependsOn(ensureAndroidSdk)
@@ -348,6 +367,7 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
         }
     }
 }
@@ -546,6 +566,38 @@ tasks.register("hostTests") {
     )
 }
 
+tasks.register("test") {
+    group = "verification"
+    description = "Alias for hostTests and swiftExportSmokeTest to satisfy standard test invocations."
+    dependsOn("hostTests", "swiftExportSmokeTest")
+}
+
+// Patch generated SPM Package.swift to include minimum macOS platform for Swift Concurrency
+tasks.configureEach {
+    if (name.endsWith("GenerateSPMPackage")) {
+        doLast {
+            val spmDir =
+                layout.buildDirectory
+                    .dir("SPMPackage")
+                    .orNull
+                    ?.asFile
+            if (spmDir != null && spmDir.exists()) {
+                spmDir.walkTopDown().filter { it.name == "Package.swift" }.forEach { file ->
+                    val text = file.readText()
+                    if (!text.contains("platforms:")) {
+                        file.writeText(
+                            text.replaceFirst(
+                                Regex("""(let package = Package\s*\(\s*name:\s*"[^"]*",)"""),
+                                "$1\n    platforms: [.macOS(.v14)],",
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Swift Export smoke test — produces the SPM package via embedSwiftExportForXcode
 // (spawned with the Xcode-style env it requires) and runs `swift test` against it,
 // so Swift Export breakage surfaces locally, not only in the swift.yml CI job.
@@ -563,6 +615,7 @@ tasks.register("swiftExportSmokeTest") {
                 .dir("swift-test")
                 .get()
                 .asFile
+                .apply { mkdirs() }
                 .absolutePath
         execOperations
             .exec {
@@ -584,26 +637,16 @@ tasks.register("swiftExportSmokeTest") {
                         "FRAMEWORKS_FOLDER_PATH" to "Frameworks",
                         "MACOSX_DEPLOYMENT_TARGET" to "14.0",
                         "DEPLOYMENT_TARGET_SETTING_NAME" to "MACOSX_DEPLOYMENT_TARGET",
+                        "ENABLE_USER_SCRIPT_SANDBOXING" to "NO",
                     ),
                 )
             }.assertNormalExitValue()
 
-        val generatedPackageSwift =
-            layout.buildDirectory
-                .file("SPMPackage/macosArm64/Debug/Package.swift")
-                .get()
-                .asFile
-        if (generatedPackageSwift.exists()) {
-            val text = generatedPackageSwift.readText()
-            if (!text.contains("platforms:")) {
-                generatedPackageSwift.writeText(
-                    text.replaceFirst(
-                        Regex("(name:\\s*\"[^\"]*\",)"),
-                        "\$1\n    platforms: [.macOS(.v14)],",
-                    ),
-                )
-            }
-        }
+        execOperations
+            .exec {
+                workingDir = layout.projectDirectory.dir("swift-test-harness").asFile
+                commandLine("swift", "package", "reset")
+            }.assertNormalExitValue()
 
         execOperations
             .exec {

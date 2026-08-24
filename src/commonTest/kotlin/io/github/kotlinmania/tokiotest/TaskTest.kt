@@ -7,26 +7,30 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TaskTest {
-    private data class SizedStream(
-        val lower: Int = 100,
-        val upper: Int? = 200,
-    )
+    class SizedMock(val size: Pair<Int, Int?>)
 
     @Test
-    fun testSpawnStreamSizeHint() {
-        val spawn = spawn(SizedStream())
-        assertEquals(100, spawn.intoInner().lower)
+    fun testSpawnSizeHint() {
+        val stream = SizedMock(100 to 200)
+        val spawn = spawn(stream)
+        assertEquals(100 to 200, spawn.intoInner().size)
     }
 
     @Test
-    fun testMockTaskWaking() {
-        val task = spawn("work")
-        assertFalse(task.isWoken())
-        task.enter { cx ->
-            cx.wake()
+    fun testMockTaskWake() {
+        val spawn = spawn(42)
+        assertFalse(spawn.isWoken())
+        assertEquals(1, spawn.wakerRefCount())
+
+        spawn.enter { task ->
+            assertFalse(task.isWoken())
+            task.wake()
+            assertTrue(task.isWoken())
         }
-        assertTrue(task.isWoken())
-        task.enter { }
-        assertFalse(task.isWoken())
+
+        spawn.enter { task ->
+            // enter clears previous wake
+            assertFalse(task.isWoken())
+        }
     }
 }
