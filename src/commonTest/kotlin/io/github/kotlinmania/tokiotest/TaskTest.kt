@@ -7,7 +7,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TaskTest {
-    class SizedMock(
+    class SizedStream(
         val size: Pair<Int, Int?>,
     )
 
@@ -20,7 +20,7 @@ class TaskTest {
 
     @Test
     fun testSpawnSizeHint() {
-        val stream = SizedMock(100 to 200)
+        val stream = SizedStream(100 to 200)
         val spawn = spawn(stream)
         assertEquals(100 to 200, spawn.intoInner().size)
     }
