@@ -11,8 +11,13 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 
 class IoTest {
+    companion object {
+        private const val FIRST_WAIT = 1000L
+        private const val SECOND_WAIT = 1000L
+    }
+
     @Test
-    fun testRead() =
+    fun read() =
         runTest {
             val mock =
                 Builder
@@ -33,7 +38,7 @@ class IoTest {
         }
 
     @Test
-    fun testReadError() =
+    fun readError() =
         runTest {
             val error = IllegalStateException("cruel")
             val mock =
@@ -61,7 +66,7 @@ class IoTest {
         }
 
     @Test
-    fun testWrite() =
+    fun write() =
         runTest {
             val mock =
                 Builder
@@ -77,7 +82,7 @@ class IoTest {
         }
 
     @Test
-    fun testWriteWithHandle() =
+    fun writeWithHandle() =
         runTest {
             val (mock, handle) = Builder.new().buildWithHandle()
             handle.write("hello ".encodeToByteArray())
@@ -90,7 +95,7 @@ class IoTest {
         }
 
     @Test
-    fun testReadWithHandle() =
+    fun readWithHandle() =
         runTest {
             val (mock, handle) = Builder.new().buildWithHandle()
             handle.read("hello ".encodeToByteArray())
@@ -106,7 +111,7 @@ class IoTest {
         }
 
     @Test
-    fun testWriteError() =
+    fun writeError() =
         runTest {
             val error = IllegalStateException("cruel")
             val mock =
@@ -131,7 +136,7 @@ class IoTest {
         }
 
     @Test
-    fun testMockPanicsReadDataLeft() {
+    fun mockPanicsReadDataLeft() {
         val mock = Builder.new().read("read".encodeToByteArray()).build()
         assertFailsWith<IllegalStateException> {
             mock.close()
@@ -139,7 +144,7 @@ class IoTest {
     }
 
     @Test
-    fun testMockPanicsWriteDataLeft() {
+    fun mockPanicsWriteDataLeft() {
         val mock = Builder.new().write("write".encodeToByteArray()).build()
         assertFailsWith<IllegalStateException> {
             mock.close()
@@ -147,9 +152,10 @@ class IoTest {
     }
 
     @Test
-    fun testWait() =
+    @kotlin.jvm.JvmName("testWait")
+    fun wait() =
         runTest {
-            val firstWait = 1000.milliseconds
+            val firstWait = FIRST_WAIT.milliseconds
 
             val mock =
                 Builder
@@ -175,10 +181,10 @@ class IoTest {
         }
 
     @Test
-    fun testMultipleWait() =
+    fun multipleWait() =
         runTest {
-            val firstWait = 1000.milliseconds
-            val secondWait = 1000.milliseconds
+            val firstWait = FIRST_WAIT.milliseconds
+            val secondWait = SECOND_WAIT.milliseconds
 
             val mock =
                 Builder
@@ -204,3 +210,4 @@ class IoTest {
             mock.close()
         }
 }
+

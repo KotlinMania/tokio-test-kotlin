@@ -6,14 +6,14 @@ import kotlin.test.assertEquals
 
 class BlockOnTest {
     @Test
-    fun testAsyncBlock() {
+    fun asyncBlock() {
         assertEquals(4, blockOn { 4 })
     }
 
     private suspend fun five(): Byte = 5
 
     @Test
-    fun testAsyncFn() {
+    fun asyncFn() {
         assertEquals(5.toByte(), blockOn { five() })
     }
 
