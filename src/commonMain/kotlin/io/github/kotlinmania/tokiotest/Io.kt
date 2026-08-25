@@ -13,6 +13,11 @@ import kotlin.time.Duration.Companion.milliseconds
 /**
  * An action scheduled on a [Mock] or submitted via [Handle].
  */
+public typealias Action = IoAction
+
+/**
+ * An action scheduled on a [Mock] or submitted via [Handle].
+ */
 @HiddenFromObjC
 public sealed class IoAction {
     public data class Read(
@@ -47,6 +52,44 @@ public sealed class IoAction {
 }
 
 /**
+ * Internal state for [Mock].
+ */
+@HiddenFromObjC
+public class Inner(
+    public val actions: ArrayDeque<IoAction> = ArrayDeque(),
+    public val name: String = "",
+) {
+    public fun action(): IoAction? = actions.firstOrNull()
+
+    public fun pollAction(cx: Any? = null): Poll<IoAction?> {
+        val next = actions.removeFirstOrNull()
+        return Poll.Ready(next)
+    }
+
+    public fun fmt(): String =
+        if (name.isEmpty()) "Inner {...}" else "Inner {name=$name, ...}"
+
+    override fun toString(): String = fmt()
+}
+
+/**
+ * Panic message formatting snippet for [Mock].
+ */
+@HiddenFromObjC
+public class PanicMsgSnippet(
+    public val inner: Inner,
+) {
+    public fun fmt(): String =
+        if (inner.name.isEmpty()) {
+            "(${inner.actions.size} actions remain)"
+        } else {
+            "(name ${inner.name}, ${inner.actions.size} actions remain)"
+        }
+
+    override fun toString(): String = fmt()
+}
+
+/**
  * Result of building a [Mock] paired with a [Handle].
  */
 @HiddenFromObjC
@@ -68,6 +111,8 @@ public class Builder {
      */
     public companion object {
         public fun new(): Builder = Builder()
+
+        public fun default(): Builder = Builder()
     }
 
     /**
@@ -232,12 +277,21 @@ public class Mock internal constructor(
         }
     }
 
-    private fun pmsg(): String =
-        if (name.isEmpty()) {
-            "(${actions.size} actions remain)"
-        } else {
-            "(name $name, ${actions.size} actions remain)"
-        }
+    public val inner: Inner get() = Inner(actions, name)
+
+    public fun pmsg(): PanicMsgSnippet = PanicMsgSnippet(inner)
+
+    public fun action(): IoAction? = actions.firstOrNull()
+
+    public fun pollAction(cx: Any? = null): Poll<IoAction?> {
+        drainChannel()
+        val next = actions.removeFirstOrNull()
+        return Poll.Ready(next)
+    }
+
+    public fun drop() {
+        close()
+    }
 
     /**
      * Returns the remaining wait duration if the current scheduled action is a wait.

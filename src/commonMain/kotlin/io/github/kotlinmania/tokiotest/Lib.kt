@@ -2,9 +2,15 @@
 package io.github.kotlinmania.tokiotest
 
 /**
- * Runs the provided suspending block, blocking until it completes.
+ * Runs the provided asynchronous computation, blocking the current thread until the
+ * computation completes.
  */
 public expect fun <T> blockOn(block: suspend () -> T): T
+
+/**
+ * Runs the provided future or coroutine block, blocking the current thread until completion.
+ */
+public fun <T> blockOnTask(block: suspend () -> T): T = blockOn(block)
 
 /**
  * Module descriptor for the tokiotest crate.
