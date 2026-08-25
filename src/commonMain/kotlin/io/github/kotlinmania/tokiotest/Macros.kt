@@ -9,6 +9,11 @@ import kotlin.time.TimeMark
 
 /**
  * Asserts a [Poll] is ready, returning the value.
+ *
+ * This will throw an [AssertionError] if the provided [Poll] does not evaluate to [Poll.Ready] at
+ * runtime.
+ *
+ * A custom panic or assertion message can be provided for additional context.
  */
 @HiddenFromObjC
 public fun <T> assertReady(poll: Poll<T>, message: String? = null): T =
@@ -22,6 +27,11 @@ public fun <T> assertReady(poll: Poll<T>, message: String? = null): T =
 
 /**
  * Asserts a [Poll] is pending.
+ *
+ * This will throw an [AssertionError] if the provided [Poll] does not evaluate to [Poll.Pending] at
+ * runtime.
+ *
+ * A custom assertion message can be provided for additional context.
  */
 @HiddenFromObjC
 public fun <T> assertPending(poll: Poll<T>, message: String? = null) {
@@ -36,7 +46,12 @@ public fun <T> assertPending(poll: Poll<T>, message: String? = null) {
 }
 
 /**
- * Asserts a [Poll] is ready and check for equality on the value.
+ * Asserts if a poll is ready and check for equality on the value.
+ *
+ * This will throw an [AssertionError] if the provided [Poll] does not evaluate to [Poll.Ready] at
+ * runtime and the value produced does not equal the expected value.
+ *
+ * A custom assertion message can be provided for additional context.
  */
 @HiddenFromObjC
 public fun <T> assertReadyEq(poll: Poll<T>, expected: T, message: String? = null) {
@@ -50,6 +65,11 @@ public fun <T> assertReadyEq(poll: Poll<T>, expected: T, message: String? = null
 
 /**
  * Asserts that the expression evaluates to successful result and returns the value.
+ *
+ * This will throw an [AssertionError] if the provided expression does not evaluate to success at
+ * runtime.
+ *
+ * A custom assertion message can be provided for additional context.
  */
 @HiddenFromObjC
 public fun <T> assertOk(result: Result<T>, message: String? = null): T {
@@ -64,6 +84,11 @@ public fun <T> assertOk(result: Result<T>, message: String? = null): T {
 
 /**
  * Asserts that the expression evaluates to failure and returns the error.
+ *
+ * This will throw an [AssertionError] if the provided expression does not evaluate to failure at
+ * runtime.
+ *
+ * A custom assertion message can be provided for additional context.
  */
 @HiddenFromObjC
 public fun <T> assertErr(result: Result<T>, message: String? = null): Throwable {
@@ -78,6 +103,11 @@ public fun <T> assertErr(result: Result<T>, message: String? = null): Throwable 
 
 /**
  * Asserts a [Poll] of [Result] is ready and successful, returning the inner value.
+ *
+ * This will throw an [AssertionError] if the provided [Poll] does not evaluate to [Poll.Ready] with
+ * a successful value at runtime.
+ *
+ * A custom assertion message can be provided for additional context.
  */
 @HiddenFromObjC
 public fun <T> assertReadyOk(poll: Poll<Result<T>>, message: String? = null): T {
@@ -87,6 +117,11 @@ public fun <T> assertReadyOk(poll: Poll<Result<T>>, message: String? = null): T 
 
 /**
  * Asserts a [Poll] of [Result] is ready and failure, returning the exception.
+ *
+ * This will throw an [AssertionError] if the provided [Poll] does not evaluate to [Poll.Ready] with
+ * a failure at runtime.
+ *
+ * A custom assertion message can be provided for additional context.
  */
 @HiddenFromObjC
 public fun <T> assertReadyErr(poll: Poll<Result<T>>, message: String? = null): Throwable {
@@ -95,12 +130,21 @@ public fun <T> assertReadyErr(poll: Poll<Result<T>>, message: String? = null): T
 }
 
 /**
- * Asserts that an elapsed duration since [start] is at least [expected].
+ * Asserts that an exact duration has elapsed since the start instant within tolerance.
+ *
+ * This checks that the elapsed time is at least [expected] and within tolerance buffer.
  */
 @HiddenFromObjC
-public fun assertElapsed(start: TimeMark, expected: Duration, message: String? = null) {
+public fun assertElapsed(
+    start: TimeMark,
+    expected: Duration,
+    tolerance: Duration = Duration.parse("50ms"),
+    message: String? = null,
+) {
     val elapsed = start.elapsedNow()
-    if (elapsed < expected) {
-        throw AssertionError(message ?: "actual = $elapsed, expected at least = $expected")
+    if (elapsed < expected - tolerance) {
+        val detail = "actual = $elapsed, expected = $expected"
+        val msg = if (message != null) "$detail; $message" else detail
+        throw AssertionError(msg)
     }
 }

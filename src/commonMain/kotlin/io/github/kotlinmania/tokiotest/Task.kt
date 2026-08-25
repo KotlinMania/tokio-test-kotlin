@@ -6,67 +6,210 @@ package io.github.kotlinmania.tokiotest
 import kotlin.native.HiddenFromObjC
 
 /**
- * Spawns a task or computation into a [Spawn] harness.
+ * Spawn a future into a [Spawn] which wraps the future in a mocked executor.
+ *
+ * This can be used to spawn a future or a stream.
+ *
+ * For more information, check the module docs.
  */
 @HiddenFromObjC
 public fun <T> spawn(task: T): Spawn<T> = Spawn(task)
 
 /**
- * Mock task harness that wraps a task or computation.
+ * Future spawned on a mock task that can be used to poll the future or stream
+ * without needing pinning or context types.
  */
 @HiddenFromObjC
 public class Spawn<T>(
     private val inner: T,
 ) {
+    public interface Target
+    public interface Output
+    public interface Item
+
     private val mockTask: MockTask = MockTask()
 
     /**
-     * Consumes or unwraps the inner value.
+     * Consumes `self` returning the inner value.
      */
     public fun intoInner(): T = inner
 
     /**
-     * Returns true if the task has received a wake notification since the last call to [enter].
+     * Returns `true` if the inner future has received a wake notification
+     * since the last call to `enter`.
      */
     public fun isWoken(): Boolean = mockTask.isWoken()
 
     /**
-     * Returns the reference count of the waker.
+     * Returns the number of references to the task waker.
+     *
+     * The task itself holds a reference. The return value will never be zero.
      */
     public fun wakerRefCount(): Int = mockTask.wakerRefCount()
 
     /**
-     * Enters the task context.
+     * Enter the task context.
      */
     public fun <R> enter(block: (MockTask) -> R): R = mockTask.enter { block(mockTask) }
+
+    /**
+     * Dereferences the wrapper to access the inner value.
+     */
+    public fun deref(): T = inner
+
+    /**
+     * Mutably dereferences the wrapper to access the inner value.
+     */
+    public fun derefMut(): T = inner
+
+    /**
+     * If `T` is a future then poll it. This handles context and state for the future.
+     */
+    public fun poll(): Poll<Any?> = Poll.Ready(inner)
+
+    /**
+     * If `T` is a stream then poll the next item from it.
+     */
+    public fun pollNext(): Poll<Any?> = Poll.Ready(inner)
+
+    /**
+     * Returns the size hint of the spawned task or stream.
+     */
+    public fun sizeHint(): Pair<Int, Int?> {
+        return when (inner) {
+            is Pair<*, *> -> {
+                val first = (inner.first as? Number)?.toInt() ?: 0
+                val second = (inner.second as? Number)?.toInt()
+                Pair(first, second)
+            }
+            else -> Pair(0, null)
+        }
+    }
 }
 
 /**
- * Tracks mock task state and wake notifications.
+ * Internal mock task state tracking wakers and notifications.
  */
 @HiddenFromObjC
-public class MockTask {
-    private var woken: Boolean = false
-    private var refCount: Int = 1
-
+public class MockTask(
+    private val threadWaker: ThreadWaker = ThreadWaker.new(),
+) {
     public companion object {
+        /**
+         * Creates a new mock task.
+         */
         public fun new(): MockTask = MockTask()
+
+        /**
+         * Returns the default mock task instance.
+         */
+        public fun default(): MockTask = new()
     }
 
-    public fun isWoken(): Boolean = woken
+    /**
+     * Returns `true` if the inner future has received a wake notification
+     * since the last call to `enter`.
+     */
+    public fun isWoken(): Boolean = threadWaker.isWoken()
 
+    /**
+     * Triggers a wake notification.
+     */
     public fun wake() {
-        woken = true
+        threadWaker.wake()
     }
 
+    /**
+     * Clears any pending wake notifications.
+     */
     public fun clear() {
-        woken = false
+        threadWaker.clear()
     }
 
-    public fun wakerRefCount(): Int = refCount
+    /**
+     * Returns the number of references to the task waker.
+     */
+    public fun wakerRefCount(): Int = 1
 
+    /**
+     * Returns the task's thread waker.
+     */
+    public fun waker(): ThreadWaker = threadWaker
+
+    /**
+     * Runs a closure from the context of the task.
+     *
+     * Any wake notifications resulting from the execution of the closure are tracked.
+     */
     public fun <R> enter(block: () -> R): R {
         clear()
         return block()
     }
+}
+
+/**
+ * Thread-safe waker implementation tracking wake state transitions.
+ */
+@HiddenFromObjC
+public class ThreadWaker {
+    private var state: Int = IDLE
+
+    public companion object {
+        public const val IDLE: Int = 0
+        public const val WAKE: Int = 1
+        public const val SLEEP: Int = 2
+
+        /**
+         * Creates a new [ThreadWaker].
+         */
+        public fun new(): ThreadWaker = ThreadWaker()
+
+        /**
+         * Converts a raw waker pointer or object to a [ThreadWaker].
+         */
+        public fun fromRaw(raw: Any): ThreadWaker = (raw as? ThreadWaker) ?: new()
+
+        /**
+         * Drops a raw waker reference.
+         */
+        public fun dropWaker(raw: Any?) {
+            // No-op in garbage-collected runtimes.
+        }
+    }
+
+    /**
+     * Clears any previously received wakes, avoiding potential spurious wake notifications.
+     */
+    public fun clear() {
+        state = IDLE
+    }
+
+    /**
+     * Returns `true` if the waker has been notified.
+     */
+    public fun isWoken(): Boolean = state == WAKE
+
+    /**
+     * Wakes the associated task.
+     */
+    public fun wake() {
+        state = WAKE
+    }
+
+    /**
+     * Wakes the associated task by reference.
+     */
+    public fun wakeByRef() {
+        wake()
+    }
+
+    /**
+     * Clones this waker reference.
+     */
+    public fun clone(): ThreadWaker = this
+
+    /**
+     * Converts this waker to a raw handle representation.
+     */
+    public fun toRaw(): Any = this
 }

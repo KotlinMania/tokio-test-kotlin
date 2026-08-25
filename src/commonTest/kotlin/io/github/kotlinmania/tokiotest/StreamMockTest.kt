@@ -69,7 +69,19 @@ class StreamMockTest {
                     .build()
 
             assertFailsWith<IllegalStateException> {
-                streamMock.close()
+                streamMock.drop()
             }
+        }
+
+    @Test
+    fun testStreamMockDefaultAndPoll() =
+        runTest {
+            val builder = StreamMockBuilder.default<Int>().next(42)
+            val mock = builder.build()
+            assertEquals(StreamAction.Next(42), mock.nextAction())
+            val poll = mock.pollNext()
+            assertTrue(poll.isReady)
+            assertEquals(42, (poll as Poll.Ready).value)
+            mock.drop()
         }
 }
