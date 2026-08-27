@@ -1,4 +1,4 @@
-// port-lint: source stream_mock.rs
+// port-lint: source tokio-test/src/stream_mock.rs
 @file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
 
 package io.github.kotlinmania.tokiotest

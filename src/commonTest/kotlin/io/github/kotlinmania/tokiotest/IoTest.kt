@@ -1,4 +1,4 @@
-// port-lint: tests io.rs
+// port-lint: tests tokio-test/src/io.rs
 @file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 
 package io.github.kotlinmania.tokiotest
