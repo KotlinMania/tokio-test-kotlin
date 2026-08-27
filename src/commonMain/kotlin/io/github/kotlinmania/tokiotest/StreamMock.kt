@@ -81,8 +81,13 @@ public class StreamMock<T> internal constructor(
 ) : Flow<T>,
     AutoCloseable {
     public sealed class Action<out T> {
-        public data class Next<out T>(val value: T) : Action<T>()
-        public data class Wait(val duration: Duration) : Action<Nothing>()
+        public data class Next<out T>(
+            val value: T,
+        ) : Action<T>()
+
+        public data class Wait(
+            val duration: Duration,
+        ) : Action<Nothing>()
     }
 
     private var isClosed = false
