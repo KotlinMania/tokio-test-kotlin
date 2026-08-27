@@ -24,7 +24,9 @@ public class Spawn<T>(
     private val inner: T,
 ) {
     public interface Target
+
     public interface Output
+
     public interface Item
 
     private val mockTask: MockTask = MockTask()
@@ -75,8 +77,8 @@ public class Spawn<T>(
     /**
      * Returns the size hint of the spawned task or stream.
      */
-    public fun sizeHint(): Pair<Int, Int?> {
-        return when (inner) {
+    public fun sizeHint(): Pair<Int, Int?> =
+        when (inner) {
             is Pair<*, *> -> {
                 val first = (inner.first as? Number)?.toInt() ?: 0
                 val second = (inner.second as? Number)?.toInt()
@@ -84,7 +86,6 @@ public class Spawn<T>(
             }
             else -> Pair(0, null)
         }
-    }
 }
 
 /**
