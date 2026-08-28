@@ -15,5 +15,7 @@
     "todos": true,
     "lint": true
   },
-  "reexport_modules": []
+  "reexport_modules": [
+    "macros"
+  ]
 }
