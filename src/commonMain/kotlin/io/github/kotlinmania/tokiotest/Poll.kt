@@ -1,4 +1,3 @@
-// port-lint: source macros.rs
 @file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
 
 package io.github.kotlinmania.tokiotest
