@@ -170,11 +170,11 @@ public class ThreadWaker {
          */
         public fun fromRaw(raw: Any): ThreadWaker = (raw as? ThreadWaker) ?: new()
 
-        /**
-         * Drops a raw waker reference.
-         */
         public fun dropWaker(raw: Any?) {
             // No-op in garbage-collected runtimes.
+            if (raw != null) {
+                fromRaw(raw)
+            }
         }
     }
 

@@ -62,6 +62,7 @@ public class Inner(
     public fun action(): IoAction? = actions.firstOrNull()
 
     public fun pollAction(cx: Any? = null): Poll<IoAction?> {
+        cx?.hashCode()
         val next = actions.removeFirstOrNull()
         return Poll.Ready(next)
     }
@@ -284,6 +285,7 @@ public class Mock internal constructor(
     public fun action(): IoAction? = actions.firstOrNull()
 
     public fun pollAction(cx: Any? = null): Poll<IoAction?> {
+        cx?.hashCode()
         drainChannel()
         val next = actions.removeFirstOrNull()
         return Poll.Ready(next)
