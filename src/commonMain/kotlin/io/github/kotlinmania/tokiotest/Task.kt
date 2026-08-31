@@ -1,4 +1,4 @@
-// port-lint: source task.rs
+// port-lint: source tokio-test/src/task.rs
 @file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
 
 package io.github.kotlinmania.tokiotest
