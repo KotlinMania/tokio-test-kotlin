@@ -17,6 +17,10 @@
   },
   "reexport_modules": [
     "lib",
-    "macros"
+    "lib.rs",
+    "tokio-test/src/lib.rs",
+    "macros",
+    "macros.rs",
+    "tokio-test/src/macros.rs"
   ]
 }
