@@ -2,7 +2,7 @@
   "type": "port",
   "name": "tokio-test-kotlin",
   "source": {
-    "path": "tmp",
+    "path": "tmp/tokio-test/src",
     "lang": "rust"
   },
   "target": {
