@@ -1,4 +1,4 @@
-// port-lint: tests tokio-test/src/stream_mock.rs
+// port-lint: tests stream_mock.rs
 @file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 
 package io.github.kotlinmania.tokiotest
