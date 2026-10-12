@@ -84,7 +84,10 @@ public class Spawn<T>(
                 val second = (inner.second as? Number)?.toInt()
                 Pair(first, second)
             }
-            else -> Pair(0, null)
+
+            else -> {
+                Pair(0, null)
+            }
         }
 }
 
