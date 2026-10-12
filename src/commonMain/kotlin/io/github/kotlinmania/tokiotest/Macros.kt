@@ -18,7 +18,10 @@ import kotlin.time.TimeMark
 @HiddenFromObjC
 public fun <T> assertReady(poll: Poll<T>, message: String? = null): T =
     when (poll) {
-        is Poll.Ready -> poll.value
+        is Poll.Ready -> {
+            poll.value
+        }
+
         is Poll.Pending -> {
             val prefix = if (message != null) "pending; $message" else "pending"
             throw AssertionError(prefix)
@@ -37,6 +40,7 @@ public fun <T> assertReady(poll: Poll<T>, message: String? = null): T =
 public fun <T> assertPending(poll: Poll<T>, message: String? = null) {
     when (poll) {
         is Poll.Pending -> {}
+
         is Poll.Ready -> {
             val detail = "ready; value = ${poll.value}"
             val msg = if (message != null) "$detail; $message" else detail

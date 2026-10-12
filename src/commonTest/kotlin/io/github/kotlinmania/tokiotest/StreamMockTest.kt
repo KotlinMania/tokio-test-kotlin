@@ -77,17 +77,12 @@ class StreamMockTest {
     fun testStreamMockDropDuringPanicDoesntMaskPanic() =
         runTest {
             assertFailsWith<IllegalStateException> {
-                val streamMock =
-                    StreamMockBuilder
-                        .new<Int>()
-                        .next(1)
-                        .next(2)
-                        .build()
-                try {
-                    throw IllegalStateException("test panic was not masked")
-                } finally {
-                    // Simulates drop during unwind
-                }
+                StreamMockBuilder
+                    .new<Int>()
+                    .next(1)
+                    .next(2)
+                    .build()
+                throw IllegalStateException("test panic was not masked")
             }
         }
 

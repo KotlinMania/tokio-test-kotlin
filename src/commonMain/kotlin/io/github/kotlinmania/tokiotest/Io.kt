@@ -336,16 +336,21 @@ public class Mock internal constructor(
                 }
                 Poll.Ready(Result.success(n))
             }
+
             is IoAction.ReadError -> {
                 actions.removeFirst()
                 val err = current.error ?: IllegalStateException("Mock read error")
                 Poll.Ready(Result.failure(err))
             }
+
             is IoAction.Wait -> {
                 actions.removeFirst()
                 Poll.Pending
             }
-            else -> Poll.Pending
+
+            else -> {
+                Poll.Pending
+            }
         }
     }
 
@@ -368,6 +373,7 @@ public class Mock internal constructor(
                     actions.removeFirst()
                     delay(current.duration)
                 }
+
                 is IoAction.Read -> {
                     actions.removeFirst()
                     val data = current.data
@@ -379,11 +385,13 @@ public class Mock internal constructor(
                     }
                     return n
                 }
+
                 is IoAction.ReadError -> {
                     actions.removeFirst()
                     val err = current.error ?: IllegalStateException("Mock read error")
                     throw err
                 }
+
                 else -> {
                     val next = channel.receive()
                     actions.addLast(next)
@@ -448,16 +456,21 @@ public class Mock internal constructor(
                 maybeWakeupReader()
                 Poll.Ready(Result.success(n))
             }
+
             is IoAction.WriteError -> {
                 actions.removeFirst()
                 val err = current.error ?: IllegalStateException("Mock write error")
                 Poll.Ready(Result.failure(err))
             }
+
             is IoAction.Wait -> {
                 actions.removeFirst()
                 Poll.Pending
             }
-            else -> Poll.Pending
+
+            else -> {
+                Poll.Pending
+            }
         }
     }
 
@@ -480,6 +493,7 @@ public class Mock internal constructor(
                     actions.removeFirst()
                     delay(current.duration)
                 }
+
                 is IoAction.Write -> {
                     actions.removeFirst()
                     val expected = current.data
@@ -500,11 +514,13 @@ public class Mock internal constructor(
                     maybeWakeupReader()
                     return n
                 }
+
                 is IoAction.WriteError -> {
                     actions.removeFirst()
                     val err = current.error ?: IllegalStateException("Mock write error")
                     throw err
                 }
+
                 else -> {
                     val next = channel.receive()
                     actions.addLast(next)
@@ -545,15 +561,19 @@ public class Mock internal constructor(
         drainChannel()
         for (action in actions) {
             when (action) {
-                is IoAction.Read ->
+                is IoAction.Read -> {
                     check(action.data.isEmpty()) {
                         "There is still data left to read. ${pmsg()}"
                     }
-                is IoAction.Write ->
+                }
+
+                is IoAction.Write -> {
                     check(action.data.isEmpty()) {
                         "There is still data left to write. ${pmsg()}"
                     }
-                else -> Unit
+                }
+
+                else -> {}
             }
         }
     }

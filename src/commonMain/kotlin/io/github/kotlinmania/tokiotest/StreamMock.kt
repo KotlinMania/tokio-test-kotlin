@@ -117,6 +117,7 @@ public class StreamMock<T> internal constructor(
                 is StreamAction.Wait -> {
                     delay(action.duration)
                 }
+
                 is StreamAction.Next -> {
                     return action.value
                 }
