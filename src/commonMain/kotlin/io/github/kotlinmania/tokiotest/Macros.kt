@@ -3,6 +3,7 @@
 
 package io.github.kotlinmania.tokiotest
 
+import io.github.kotlinmania.futures.Poll
 import kotlin.native.HiddenFromObjC
 import kotlin.time.Duration
 import kotlin.time.TimeMark
@@ -152,3 +153,13 @@ public fun assertElapsed(
         throw AssertionError(msg)
     }
 }
+
+/**
+ * Returns true if this poll result is ready.
+ */
+public val <T> Poll<T>.isReady: Boolean get() = this is Poll.Ready
+
+/**
+ * Returns true if this poll result is pending.
+ */
+public val <T> Poll<T>.isPending: Boolean get() = this is Poll.Pending

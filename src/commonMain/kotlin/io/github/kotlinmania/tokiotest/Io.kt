@@ -3,12 +3,18 @@
 
 package io.github.kotlinmania.tokiotest
 
+import io.github.kotlinmania.futures.Poll
+import io.github.kotlinmania.tokio.io.AsyncRead
+import io.github.kotlinmania.tokio.io.AsyncWrite
+import io.github.kotlinmania.tokio.io.ReadBuf
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlin.math.min
 import kotlin.native.HiddenFromObjC
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import io.github.kotlinmania.tokio.io.Context as TokioContext
+import io.github.kotlinmania.tokio.io.Poll as TokioPoll
 
 /**
  * An action scheduled on a [Mock] or submitted via [Handle].
@@ -270,13 +276,105 @@ public class Mock internal constructor(
     private val actions: ArrayDeque<IoAction>,
     private val channel: Channel<IoAction>,
     private val name: String,
-) : AutoCloseable {
+) : AsyncRead,
+    AsyncWrite,
+    AutoCloseable {
     private fun drainChannel() {
         while (true) {
             val next = channel.tryReceive().getOrNull() ?: break
             actions.addLast(next)
         }
     }
+
+    override fun pollRead(cx: TokioContext, buf: ReadBuf): TokioPoll<Result<Unit>> {
+        drainChannel()
+        if (actions.isEmpty()) {
+            return TokioPoll.Ready(Result.success(Unit))
+        }
+        val current = actions.first()
+        return when (current) {
+            is IoAction.Read -> {
+                actions.removeFirst()
+                val data = current.data
+                val n = min(buf.remaining(), data.size)
+                val ubytes = UByteArray(n) { i -> data[i].toUByte() }
+                buf.putSlice(ubytes)
+                if (data.size > n) {
+                    val remaining = data.copyOfRange(n, data.size)
+                    actions.addFirst(IoAction.Read(remaining))
+                }
+                TokioPoll.Ready(Result.success(Unit))
+            }
+
+            is IoAction.ReadError -> {
+                actions.removeFirst()
+                val err = current.error ?: IllegalStateException("Mock read error")
+                TokioPoll.Ready(Result.failure(err))
+            }
+
+            is IoAction.Wait -> {
+                actions.removeFirst()
+                TokioPoll.Pending
+            }
+
+            else -> {
+                TokioPoll.Pending
+            }
+        }
+    }
+
+    override fun pollWrite(cx: TokioContext, buf: UByteArray): TokioPoll<Result<Int>> {
+        drainChannel()
+        if (actions.isEmpty()) {
+            return TokioPoll.Ready(Result.failure(IllegalStateException("broken pipe / unexpected write ${pmsg()}")))
+        }
+        val current = actions.first()
+        return when (current) {
+            is IoAction.Write -> {
+                actions.removeFirst()
+                val expected = current.data
+                val n = min(buf.size, expected.size)
+                for (i in 0 until n) {
+                    val actualByte = buf[i].toByte()
+                    val expectedByte = expected[i]
+                    if (actualByte != expectedByte) {
+                        return TokioPoll.Ready(
+                            Result.failure(
+                                AssertionError(
+                                    "Write mismatch name=$name byte=$i expected=$expectedByte actual=$actualByte",
+                                ),
+                            ),
+                        )
+                    }
+                }
+                if (expected.size > n) {
+                    val remaining = expected.copyOfRange(n, expected.size)
+                    actions.addFirst(IoAction.Write(remaining))
+                }
+                maybeWakeupReader()
+                TokioPoll.Ready(Result.success(n))
+            }
+
+            is IoAction.WriteError -> {
+                actions.removeFirst()
+                val err = current.error ?: IllegalStateException("Mock write error")
+                TokioPoll.Ready(Result.failure(err))
+            }
+
+            is IoAction.Wait -> {
+                actions.removeFirst()
+                TokioPoll.Pending
+            }
+
+            else -> {
+                TokioPoll.Pending
+            }
+        }
+    }
+
+    override fun pollFlush(cx: TokioContext): TokioPoll<Result<Unit>> = TokioPoll.Ready(Result.success(Unit))
+
+    override fun pollShutdown(cx: TokioContext): TokioPoll<Result<Unit>> = TokioPoll.Ready(Result.success(Unit))
 
     public val inner: Inner get() = Inner(actions, name)
 

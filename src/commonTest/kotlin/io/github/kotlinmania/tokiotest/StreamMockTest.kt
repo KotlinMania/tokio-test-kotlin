@@ -3,6 +3,7 @@
 
 package io.github.kotlinmania.tokiotest
 
+import io.github.kotlinmania.futures.Poll
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

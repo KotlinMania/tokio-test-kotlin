@@ -1,6 +1,7 @@
 // port-lint: tests macros.rs
 package io.github.kotlinmania.tokiotest
 
+import io.github.kotlinmania.futures.Poll
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
