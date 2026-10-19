@@ -9,6 +9,8 @@ detekt = "2.0.0-alpha.6"
 ktlint = "14.2.0"
 ktlintEngine = "1.8.0"
 kotlinxBenchmark = "0.5.0"
+futuresKotlin = "0.2.1"
+tokioKotlin = "0.1.1"
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
@@ -27,6 +29,8 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
 collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "collectionsImmutable" }
 kotlinx-benchmark-runtime = { module = "org.jetbrains.kotlinx:kotlinx-benchmark-runtime", version.ref = "kotlinxBenchmark" }
+futures-kotlin = { module = "io.github.kotlinmania:futures-kotlin", version.ref = "futuresKotlin" }
+tokio-kotlin = { module = "io.github.kotlinmania:tokio-kotlin", version.ref = "tokioKotlin" }
 
 [bundles]
 tokio-test-kotlin-commonMain = [
@@ -35,4 +39,6 @@ tokio-test-kotlin-commonMain = [
   "kotlinx-serialization-json",
   "kotlinx-datetime",
   "collections-immutable",
+  "futures-kotlin",
+  "tokio-kotlin",
 ]

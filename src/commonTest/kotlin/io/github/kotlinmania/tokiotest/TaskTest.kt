@@ -1,6 +1,14 @@
 // port-lint: tests task.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.tokiotest
 
+import io.github.kotlinmania.futures.Poll
+import io.github.kotlinmania.futures.SizeHint
+import io.github.kotlinmania.futures.Stream
+import io.github.kotlinmania.futures.TaskContext
+import io.github.kotlinmania.futures.Yield
+import kotlin.native.HiddenFromObjC
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -11,10 +19,23 @@ class TaskTest {
         val size: Pair<Int, Int?>,
     )
 
+    @HiddenFromObjC
+    class RealSizedStream : Stream<Unit> {
+        override fun pollNext(context: TaskContext): Poll<Yield<Unit>> = Poll.Pending
+
+        override fun sizeHint(): SizeHint = SizeHint(100, 200)
+    }
+
     @Test
     fun testSpawnStreamSizeHint() {
         val stream = Pair(100, 200)
         val spawn = spawn(stream)
+        assertEquals(Pair(100, 200), spawn.sizeHint())
+    }
+
+    @Test
+    fun testSpawnRealStreamSizeHint() {
+        val spawn = spawn(RealSizedStream())
         assertEquals(Pair(100, 200), spawn.sizeHint())
     }
 

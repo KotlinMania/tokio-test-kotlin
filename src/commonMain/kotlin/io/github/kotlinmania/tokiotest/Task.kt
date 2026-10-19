@@ -3,6 +3,11 @@
 
 package io.github.kotlinmania.tokiotest
 
+import io.github.kotlinmania.futures.Future
+import io.github.kotlinmania.futures.Poll
+import io.github.kotlinmania.futures.Stream
+import io.github.kotlinmania.futures.TaskContext
+import io.github.kotlinmania.futures.Waker
 import kotlin.native.HiddenFromObjC
 
 /**
@@ -55,6 +60,11 @@ public class Spawn<T>(
     public fun <R> enter(block: (MockTask) -> R): R = mockTask.enter { block(mockTask) }
 
     /**
+     * Enter the task context with a [TaskContext].
+     */
+    public fun <R> enterContext(block: (TaskContext) -> R): R = mockTask.enter(block)
+
+    /**
      * Dereferences the wrapper to access the inner value.
      */
     public fun deref(): T = inner
@@ -67,18 +77,47 @@ public class Spawn<T>(
     /**
      * If `T` is a future then poll it. This handles context and state for the future.
      */
-    public fun poll(): Poll<Any?> = Poll.Ready(inner)
+    public fun poll(): Poll<Any?> {
+        val fut = inner
+        if (fut is Future<*>) {
+            return mockTask.enter { cx ->
+                val result = fut.poll(cx)
+                when (result) {
+                    is Poll.Ready -> Poll.Ready(result.value)
+                    Poll.Pending -> Poll.Pending
+                }
+            }
+        }
+        return Poll.Ready(inner)
+    }
 
     /**
      * If `T` is a stream then poll the next item from it.
      */
-    public fun pollNext(): Poll<Any?> = Poll.Ready(inner)
+    public fun pollNext(): Poll<Any?> {
+        val stream = inner
+        if (stream is Stream<*>) {
+            return mockTask.enter { cx ->
+                val result = stream.pollNext(cx)
+                when (result) {
+                    is Poll.Ready -> Poll.Ready(result.value)
+                    Poll.Pending -> Poll.Pending
+                }
+            }
+        }
+        return Poll.Ready(inner)
+    }
 
     /**
      * Returns the size hint of the spawned task or stream.
      */
     public fun sizeHint(): Pair<Int, Int?> =
         when (inner) {
+            is Stream<*> -> {
+                val hint = inner.sizeHint()
+                Pair(hint.lower, hint.upper)
+            }
+
             is Pair<*, *> -> {
                 val first = (inner.first as? Number)?.toInt() ?: 0
                 val second = (inner.second as? Number)?.toInt()
@@ -145,9 +184,10 @@ public class MockTask(
      *
      * Any wake notifications resulting from the execution of the closure are tracked.
      */
-    public fun <R> enter(block: () -> R): R {
+    public fun <R> enter(block: (TaskContext) -> R): R {
         clear()
-        return block()
+        val cx = TaskContext(threadWaker)
+        return block(cx)
     }
 }
 
@@ -155,7 +195,7 @@ public class MockTask(
  * Thread-safe waker implementation tracking wake state transitions.
  */
 @HiddenFromObjC
-public class ThreadWaker {
+public class ThreadWaker : Waker {
     private var state: Int = IDLE
 
     public companion object {
@@ -203,7 +243,7 @@ public class ThreadWaker {
     /**
      * Wakes the associated task by reference.
      */
-    public fun wakeByRef() {
+    override fun wakeByRef() {
         wake()
     }
 

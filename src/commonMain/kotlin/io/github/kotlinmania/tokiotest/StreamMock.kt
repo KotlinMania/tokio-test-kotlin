@@ -3,6 +3,11 @@
 
 package io.github.kotlinmania.tokiotest
 
+import io.github.kotlinmania.futures.Poll
+import io.github.kotlinmania.futures.SizeHint
+import io.github.kotlinmania.futures.Stream
+import io.github.kotlinmania.futures.TaskContext
+import io.github.kotlinmania.futures.Yield
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
@@ -78,7 +83,8 @@ public class StreamMockBuilder<T> {
 @HiddenFromObjC
 public class StreamMock<T> internal constructor(
     private val actions: ArrayDeque<StreamAction<T>>,
-) : Flow<T>,
+) : Stream<T>,
+    Flow<T>,
     AutoCloseable {
     public sealed class Action<out T> {
         public data class Next<out T>(
@@ -96,6 +102,22 @@ public class StreamMock<T> internal constructor(
      * Retrieves the next action in the script without consuming it.
      */
     public fun nextAction(): StreamAction<T>? = actions.firstOrNull()
+
+    override fun pollNext(context: TaskContext): Poll<Yield<T>> {
+        val next = actions.removeFirstOrNull() ?: return Poll.Ready(Yield.End)
+        return when (next) {
+            is StreamAction.Next -> {
+                Poll.Ready(Yield.Value(next.value))
+            }
+
+            is StreamAction.Wait -> {
+                context.wakeByRef()
+                Poll.Pending
+            }
+        }
+    }
+
+    override fun sizeHint(): SizeHint = SizeHint(actions.size, actions.size)
 
     /**
      * Polls the next item from the stream.
